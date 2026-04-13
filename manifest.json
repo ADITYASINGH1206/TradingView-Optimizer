@@ -3,6 +3,11 @@
   "name": "TradingView Strategy Optimizer",
   "version": "1.0",
   "description": "Automates Chrome strategy optimization on TradingView via UI manipulation.",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
   "permissions": [
     "activeTab",
     "scripting",
@@ -16,12 +21,21 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
   },
   "content_scripts": [
     {
-      "matches": ["*://*.tradingview.com/*"],
-      "js": ["content.js"]
+      "matches": [
+        "*://*.tradingview.com/*"
+      ],
+      "js": [
+        "content.js"
+      ]
     }
   ]
 }
