@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV Optimizer</title>
+    <style>
+        :root {
+            --bg-color: #131722;
+            --text-color: #D1D4DC;
+            --primary-accent: #2962FF;
+            --input-bg: #2A2E39;
+            --border: #363A45;
+            --success: #00A25B;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            width: 350px;
+            padding: 15px;
+            margin: 0;
+            box-sizing: border-box;
+        }
+        h3 {
+            margin-top: 0;
+            color: #FFFFFF;
+            border-bottom: 2px solid var(--primary-accent);
+            padding-bottom: 8px;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--primary-accent);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #1E53E5; }
+        .input-row {
+            margin-bottom: 12px;
+            padding: 10px;
+            background: #1e222d;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+        .row-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .row-header label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            max-width: 70%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .opt-toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: #868993;
+        }
+        .range-inputs {
+            display: flex;
+            gap: 5px;
+        }
+        .boolean-label {
+            font-size: 12px;
+            color: var(--primary-accent);
+            font-style: italic;
+        }
+        input[type="text"], input[type="number"] {
+            width: 30%;
+            padding: 6px;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            background-color: var(--input-bg);
+            color: white;
+            font-size: 12px;
+        }
+        input:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            background-color: var(--input-bg);
+            color: white;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+        }
+        #inputs-container {
+            max-height: 380px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h3>TV Strategy Optimizer</h3>
+    <button id="scan-btn">1. Scan TV Settings Modal</button>
+    
+    <div id="inputs-container"></div>
+    
+    <div id="optimization-options" style="display:none;">
+        <label style="font-size: 13px; display: block; margin-top: 15px;">Target Optimization Metric:</label>
+        <select id="target-select">
+            <option value="Net Profit">Maximize Net Profit</option>
+            <option value="Profit Factor">Maximize Profit Factor</option>
+            <option value="Sharpe Ratio">Maximize Sharpe Ratio</option>
+            <option value="Percent Profitable">Maximize Win Rate (%)</option>
+            <option value="Max Drawdown">Minimize Max Drawdown</option>
+            <option value="Buy & Hold Return">Maximize Buy & Hold</option>
+            <option value="Gross Profit">Maximize Gross Profit</option>
+        </select>
+        <button id="start-btn" style="background-color: var(--success);">2. Start Optimization Loop</button>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "TradingView Strategy Optimizer",
+  "version": "1.0",
+  "description": "Automates Chrome strategy optimization on TradingView via UI manipulation.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "*://*.tradingview.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.tradingview.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
