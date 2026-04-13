@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TV Optimizer</title>
+    <title>TV Strategy Optimizer</title>
     <style>
         :root {
             --bg-color: #131722;
@@ -12,49 +12,105 @@
             --input-bg: #2A2E39;
             --border: #363A45;
             --success: #00A25B;
+            --muted: #888;
         }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             width: 350px;
-            padding: 15px;
+            min-height: 480px; /* Increased to accommodate header/footer comfortably */
             margin: 0;
-            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
         }
-        h3 {
-            margin-top: 0;
+
+        /* HEADER */
+        .header {
+            padding: 20px 15px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .header img {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 8px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .header h3 {
+            margin: 0;
+            font-size: 18px;
             color: #FFFFFF;
-            border-bottom: 2px solid var(--primary-accent);
-            padding-bottom: 8px;
-            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
         }
+
+        /* MAIN CONTENT */
+        .main-content {
+            padding: 15px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
         button {
             width: 100%;
-            padding: 10px;
+            padding: 12px 14px;
             background-color: var(--primary-accent);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-weight: 600;
+            font-size: 13px;
             margin-top: 10px;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
         }
-        button:hover { background-color: #1E53E5; }
+
+        button:hover {
+            background-color: #1E53E5;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #inputs-container {
+            flex-grow: 1;
+            max-height: 320px;
+            overflow-y: auto;
+            margin-top: 15px;
+            padding-right: 5px;
+        }
+
+        /* Input Rows (Preserved logic styling) */
         .input-row {
-            margin-bottom: 12px;
-            padding: 10px;
+            margin-bottom: 10px;
+            padding: 12px;
             background: #1e222d;
-            border-radius: 4px;
+            border-radius: 6px;
             border: 1px solid var(--border);
         }
+
         .row-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
+
         .row-header label {
             font-size: 13px;
             font-weight: 600;
@@ -64,73 +120,89 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .opt-toggle-container {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 11px;
-            color: #868993;
-        }
+
         .range-inputs {
             display: flex;
-            gap: 5px;
+            gap: 8px;
         }
-        .boolean-label {
-            font-size: 12px;
-            color: var(--primary-accent);
-            font-style: italic;
-        }
-        input[type="text"], input[type="number"] {
-            width: 30%;
-            padding: 6px;
-            border: 1px solid var(--border);
-            border-radius: 3px;
+
+        input[type="number"], select {
             background-color: var(--input-bg);
             color: white;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px;
             font-size: 12px;
         }
-        input:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
+
+        input[type="number"] {
+            width: 32%;
         }
+
         select {
             width: 100%;
-            padding: 8px;
-            margin-top: 5px;
             margin-bottom: 15px;
-            background-color: var(--input-bg);
-            color: white;
-            border: 1px solid var(--border);
-            border-radius: 3px;
+            cursor: pointer;
         }
-        #inputs-container {
-            max-height: 380px;
-            overflow-y: auto;
-            margin-top: 15px;
+
+        /* FOOTER */
+        .footer {
+            padding: 15px;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            background-color: rgba(0, 0, 0, 0.2);
         }
+
+        .footer .copyright {
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .footer .disclaimer {
+            font-size: 9px;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Scrollbar Styling */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: var(--bg-color); }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4a4e5a; }
+
     </style>
 </head>
 <body>
-    <h3>TV Strategy Optimizer</h3>
-    <button id="scan-btn">1. Scan TV Settings Modal</button>
-    
-    <div id="inputs-container"></div>
-    
-    <div id="optimization-options" style="display:none;">
-        <label style="font-size: 13px; display: block; margin-top: 15px;">Target Optimization Metric:</label>
-        <select id="target-select">
-            <option value="Net Profit">Maximize Net Profit</option>
-            <option value="Profit Factor">Maximize Profit Factor</option>
-            <option value="Sharpe Ratio">Maximize Sharpe Ratio</option>
-            <option value="Percent Profitable">Maximize Win Rate (%)</option>
-            <option value="Max Drawdown">Minimize Max Drawdown</option>
-            <option value="Buy & Hold Return">Maximize Buy & Hold</option>
-            <option value="Gross Profit">Maximize Gross Profit</option>
-        </select>
-        <button id="start-btn" style="background-color: var(--success);">2. Start Optimization Loop</button>
+
+    <div class="header">
+        <img src="icon48.png" alt="Logo">
+        <h3>TV Strategy Optimizer</h3>
+    </div>
+
+    <div class="main-content">
+        <button id="scan-btn">1. Scan TV Settings Modal</button>
+        
+        <div id="inputs-container">
+            <!-- Dynamic parameters will load here after scanning -->
+        </div>
+        
+        <div id="optimization-options" style="display:none;">
+            <label style="font-size: 12px; color: var(--muted); margin-top: 15px; display: block; margin-bottom: 8px;">Target Optimization Metric:</label>
+            <select id="target-select">
+                <option value="Net Profit">Maximize Net Profit</option>
+                <option value="Profit Factor">Maximize Profit Factor</option>
+                <option value="Percent Profitable">Maximize Win Rate (%)</option>
+                <option value="Max Drawdown">Minimize Max Drawdown</option>
+            </select>
+            <button id="start-btn" style="background-color: var(--success);">2. Start Optimization Loop</button>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="copyright">&copy; 2026 Aditya Singh. All rights reserved.</div>
+        <div class="disclaimer">Not affiliated with TradingView.</div>
     </div>
 
     <script src="popup.js"></script>
