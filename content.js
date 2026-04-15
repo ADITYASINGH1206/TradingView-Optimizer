@@ -4,46 +4,52 @@ let hasSeenLoadingTransition = false;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "scan") {
-        const modal = document.querySelector('div[data-name="indicator-properties-dialog"]');
-        if (!modal) {
-            sendResponse({ inputs: null, error: "Settings modal not found. Please manually open the Strategy Settings dialog first." });
-            return;
-        }
-
-        // Extract Strategy Name from the modal header
-        const titleEl = modal.querySelector('[data-name="dialog-title"], [class*="title-"], .js-dialog__title');
-        const strategyName = titleEl ? titleEl.innerText.trim() : "Unknown_Strategy";
-
-        const inputs = Array.from(modal.querySelectorAll('input:not([type="hidden"])'));
-        const result = [];
-
-        inputs.forEach((inp, idx) => {
-            let labelEl = null;
-            const row = inp.closest('tr') || inp.closest('.tv-control-row') || inp.closest('[class*="row-"]');
-            if (row) {
-                labelEl = row.querySelector('.tv-control-checkbox__label') || row.querySelector('div[class*="title-"]');
+        (async () => {
+            const modal = document.querySelector('div[data-name="indicator-properties-dialog"]');
+            if (!modal) {
+                sendResponse({ inputs: null, error: "Settings modal not found. Please manually open the Strategy Settings dialog first." });
+                return;
             }
 
-            if (!labelEl) {
-                const parent = inp.parentElement;
-                if (parent && parent.previousElementSibling) {
-                    labelEl = parent.previousElementSibling;
+            await ensureInputsTabActive(modal);
+
+            // Extract Strategy Name from the modal header
+            const titleEl = modal.querySelector('[data-name="dialog-title"], [class*="title-"], .js-dialog__title');
+            const strategyName = titleEl ? titleEl.innerText.trim() : "Unknown_Strategy";
+
+            const inputs = Array.from(modal.querySelectorAll('input:not([type="hidden"])'));
+            const result = [];
+
+            inputs.forEach((inp, idx) => {
+                let labelEl = null;
+                const row = inp.closest('tr') || inp.closest('.tv-control-row') || inp.closest('[class*="row-"]');
+                if (row) {
+                    labelEl = row.querySelector('.tv-control-checkbox__label') || row.querySelector('div[class*="title-"]');
                 }
-            }
 
-            const labelText = labelEl ? labelEl.innerText.trim() : `Input ${idx}`;
+                if (!labelEl) {
+                    const parent = inp.parentElement;
+                    if (parent && parent.previousElementSibling) {
+                        labelEl = parent.previousElementSibling;
+                    }
+                }
 
-            result.push({
-                name: `input_${idx}`,
-                label: labelText,
-                type: inp.type,
-                value: inp.value,
-                checked: inp.checked
+                const labelText = labelEl ? labelEl.innerText.trim() : `Input ${idx}`;
+
+                result.push({
+                    name: `input_${idx}`,
+                    label: labelText,
+                    type: inp.type,
+                    value: inp.value,
+                    checked: inp.checked
+                });
             });
-        });
 
-        sendResponse({ inputs: result, strategyName: strategyName });
+            sendResponse({ inputs: result, strategyName: strategyName });
+        })();
+        return true; 
     }
+
 
     if (message.action === "run_permutation") {
         runPermutation(message.permutation);
@@ -112,6 +118,8 @@ async function runPermutation(permutation) {
         return;
     }
 
+    await ensureInputsTabActive(modal);
+
     const inputs = Array.from(modal.querySelectorAll('input:not([type="hidden"])'));
     
     for (const [key, val] of Object.entries(permutation)) {
@@ -119,6 +127,7 @@ async function runPermutation(permutation) {
             const index = parseInt(key.split("_")[1]);
             const inp = inputs[index];
             if (inp) {
+                inp.focus();
                 if (inp.type === 'checkbox') {
                     const targetValue = val === "true" || val === true;
                     if (inp.checked !== targetValue) {
@@ -129,15 +138,26 @@ async function runPermutation(permutation) {
                         }
                     }
                 } else {
-                    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                    nativeInputValueSetter.call(inp, val);
+                    inp.select();
+                    // Attempt to use execCommand for better React state sync
+                    try {
+                        document.execCommand('insertText', false, val);
+                    } catch(e) { console.error("execCommand failed", e); }
+                    
+                    if (inp.value !== val) {
+                        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                        nativeInputValueSetter.call(inp, val);
+                    }
+                    
                     inp.dispatchEvent(new Event('input', { bubbles: true }));
                     inp.dispatchEvent(new Event('change', { bubbles: true }));
-                    inp.dispatchEvent(new Event('blur', { bubbles: true }));
                 }
+                inp.blur();
+                await new Promise(r => setTimeout(r, 50)); // Tiny delay between inputs
             }
         }
     }
+
 
     // Capture current value as "stale" before we click OK
     globalStaleValue = normalizeValue(getCurrentProfitValue());
@@ -258,6 +278,19 @@ function isDataLoadedByAlignment() {
     return false;
 }
 
+async function ensureInputsTabActive(modal) {
+    const tabs = Array.from(modal.querySelectorAll('[class*="tab"], [role="tab"]'));
+    const inputsTab = tabs.find(t => t.innerText.trim().toLowerCase() === 'inputs' || t.getAttribute('data-name') === 'inputs');
+    
+    if (inputsTab) {
+        const isActive = inputsTab.className.includes('active') || inputsTab.getAttribute('aria-selected') === 'true';
+        if (!isActive) {
+            inputsTab.click();
+            console.log("TV Optimizer: Switched to Inputs tab.");
+            await new Promise(r => setTimeout(r, 500));
+        }
+    }
+}
 
 
 async function ensureOverviewTabActive() {
