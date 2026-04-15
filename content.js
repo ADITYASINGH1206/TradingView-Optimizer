@@ -140,9 +140,9 @@ async function runPermutation(permutation) {
     }
 
     // Capture current value as "stale" before we click OK
-    globalStaleValue = getCurrentProfitValue();
+    globalStaleValue = normalizeValue(getCurrentProfitValue());
     hasSeenLoadingTransition = false;
-    console.log(`TV Optimizer: Current (stale) profit is "${globalStaleValue}". Applying new permutation...`);
+    console.log(`TV Optimizer: Current (stale) value normalized: "${globalStaleValue}". Applying settings...`);
 
     // Apply and ensure we switch to Overview
     const activeModal = document.querySelector('div[data-name="indicator-properties-dialog"]');
@@ -153,18 +153,30 @@ async function runPermutation(permutation) {
         }
         if (targetBtn) {
             targetBtn.click();
-            // Small delay to ensure click is processed before modal closes
-            await new Promise(r => setTimeout(r, 300));
+            console.log("TV Optimizer: Clicked OK. Waiting for modal to close...");
+            
+            // Phase 0: Wait for modal to actually close
+            let modalStillExists = true;
+            for (let i = 0; i < 15; i++) {
+                await new Promise(r => setTimeout(r, 200));
+                if (!document.querySelector('div[data-name="indicator-properties-dialog"]')) {
+                    modalStillExists = false;
+                    break;
+                }
+            }
+            if (modalStillExists) console.warn("TV Optimizer: Modal didn't close after 3s, proceeding anyway...");
+            else console.log("TV Optimizer: Modal confirmed closed.");
         }
     }
 
-
-    // Crucial: Wait for modal to close and then force-switch to Overview tab
-    await new Promise(r => setTimeout(r, 1000));
+    // Phase 1: Mandatory Settling (Give TV time to start calculating)
+    console.log("TV Optimizer: Settling for 1.5s to allow calculation to start...");
+    await new Promise(r => setTimeout(r, 1500));
+    
     await ensureOverviewTabActive();
-
     waitForCalculationAndScrape();
 }
+
 
 async function waitForCalculationAndScrape() {
     console.log("TV Optimizer: Waiting for numbers (Tab-Force Mode)...");
@@ -203,15 +215,21 @@ function getCurrentProfitValue() {
     return extractValueBySmartPair(labelEl, "Net Profit");
 }
 
+function normalizeValue(val) {
+    if (!val || val === "N/A" || val === "---") return val;
+    // Keep only numbers, dot, and minus (handles commas, currency signs, etc.)
+    return val.replace(/−/g, '-').replace(/[^\d.-]/g, '');
+}
 
 function isDataLoadedByAlignment() {
-    const valStr = getCurrentProfitValue();
+    const rawVal = getCurrentProfitValue();
+    const valStr = normalizeValue(rawVal);
     
     // Status check
-    if (valStr === "N/A" || valStr.includes('---')) {
-        if (!hasSeenLoadingTransition && (valStr === "N/A" || valStr.includes('---'))) {
+    if (rawVal === "N/A" || rawVal.includes('---')) {
+        if (!hasSeenLoadingTransition) {
             hasSeenLoadingTransition = true;
-            console.log("TV Optimizer: Detected 'Loading/---' state. Transition confirmed.");
+            console.log("TV Optimizer: Loading state detected ('---').");
         }
         return false;
     }
@@ -219,27 +237,27 @@ function isDataLoadedByAlignment() {
     const isNumeric = /[0-9]/.test(valStr);
     if (!isNumeric) return false;
 
-    // Case 1: We saw a loading transition ("---") and now we have a number.
+    // Case 1: We saw a loading transition and now we have a number
     if (hasSeenLoadingTransition) {
-        console.log(`TV Optimizer: Data recovered from loading state: "${valStr}"`);
+        console.log(`TV Optimizer: New data loaded (after loading state): "${valStr}"`);
         return true;
     }
 
-    // Case 2: The value is different from the stale value.
-    if (globalStaleValue && valStr !== globalStaleValue) {
-        console.log(`TV Optimizer: Data changed from stale "${globalStaleValue}" to "${valStr}"`);
+    // Case 2: The value is different from the normalized stale value.
+    if (globalStaleValue && valStr !== globalStaleValue && valStr !== "0") {
+        console.log(`TV Optimizer: Detected value change from "${globalStaleValue}" to "${valStr}".`);
         return true;
     }
 
-    // Case 3: Safety fallback - if it's been more than 5 seconds and we have a number
-    // but it's the same as stale, maybe the result is just the same.
-    if (currentPollCount > 10) { 
-        console.log(`TV Optimizer: Value stable at "${valStr}" for 5s. Proceeding.`);
+    // Case 3: Safety fallback - if it's been more than 6 seconds and we have a stable number
+    if (currentPollCount > 12) { 
+        console.log(`TV Optimizer: Value stable at "${valStr}" after delay. Assuming valid.`);
         return true;
     }
 
     return false;
 }
+
 
 
 async function ensureOverviewTabActive() {
