@@ -1,4 +1,7 @@
 let currentPollCount = 0;
+let globalStaleValue = null;
+let hasSeenLoadingTransition = false;
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "scan") {
         const modal = document.querySelector('div[data-name="indicator-properties-dialog"]');
@@ -136,6 +139,11 @@ async function runPermutation(permutation) {
         }
     }
 
+    // Capture current value as "stale" before we click OK
+    globalStaleValue = getCurrentProfitValue();
+    hasSeenLoadingTransition = false;
+    console.log(`TV Optimizer: Current (stale) profit is "${globalStaleValue}". Applying new permutation...`);
+
     // Apply and ensure we switch to Overview
     const activeModal = document.querySelector('div[data-name="indicator-properties-dialog"]');
     if (activeModal) {
@@ -143,8 +151,13 @@ async function runPermutation(permutation) {
         if (!targetBtn) {
             targetBtn = Array.from(activeModal.querySelectorAll('button')).find(btn => btn.innerText.trim() === 'OK');
         }
-        if (targetBtn) targetBtn.click();
+        if (targetBtn) {
+            targetBtn.click();
+            // Small delay to ensure click is processed before modal closes
+            await new Promise(r => setTimeout(r, 300));
+        }
     }
+
 
     // Crucial: Wait for modal to close and then force-switch to Overview tab
     await new Promise(r => setTimeout(r, 1000));
@@ -157,7 +170,8 @@ async function waitForCalculationAndScrape() {
     console.log("TV Optimizer: Waiting for numbers (Tab-Force Mode)...");
     
     currentPollCount = 0;
-    const maxPolls = 80; // Increased to 40s total
+    const maxPolls = 100; // Increased to 50s total
+
     
     return new Promise((resolve) => {
         const pollTimer = setInterval(async () => {
@@ -165,34 +179,68 @@ async function waitForCalculationAndScrape() {
             if (currentPollCount % 10 === 0) await ensureOverviewTabActive();
 
             if (isDataLoadedByAlignment() || currentPollCount >= maxPolls) {
+                if (currentPollCount >= maxPolls) {
+                    console.warn("TV Optimizer: Reached max polls. Scraping whatever is available.");
+                } else {
+                    console.log(`TV Optimizer: New data detected after ${currentPollCount * 0.5}s. Final stabilization wait...`);
+                }
+
                 clearInterval(pollTimer);
-                console.log("TV Optimizer: Data ready. Scrapping...");
                 
                 setTimeout(() => {
                     scrapeMetrics();
                     resolve();
-                }, 800);
+                }, 1000); // 1s final buffer
             }
             currentPollCount++;
         }, 500);
     });
 }
 
-function isDataLoadedByAlignment() {
+function getCurrentProfitValue() {
     const labelEl = findLabelElement("Total P&L") || findLabelElement("Net Profit");
-    if (!labelEl) {
-        if (currentPollCount % 10 === 0) console.log("TV Optimizer Diagnostic: 'Total P&L' or 'Net Profit' label not found anywhere in DOM.");
-        return false;
-    }
-
-    const valStr = extractValueBySmartPair(labelEl, "Net Profit");
-    if (!valStr || valStr === "N/A" || valStr.includes('---')) {
-        if (currentPollCount % 10 === 0) console.log(`TV Optimizer Diagnostic: Found label at y=${labelEl.getBoundingClientRect().top}, but value is currently: "${valStr}"`);
-        return false;
-    }
-
-    return /[0-9]/.test(valStr);
+    if (!labelEl) return "N/A";
+    return extractValueBySmartPair(labelEl, "Net Profit");
 }
+
+
+function isDataLoadedByAlignment() {
+    const valStr = getCurrentProfitValue();
+    
+    // Status check
+    if (valStr === "N/A" || valStr.includes('---')) {
+        if (!hasSeenLoadingTransition && (valStr === "N/A" || valStr.includes('---'))) {
+            hasSeenLoadingTransition = true;
+            console.log("TV Optimizer: Detected 'Loading/---' state. Transition confirmed.");
+        }
+        return false;
+    }
+
+    const isNumeric = /[0-9]/.test(valStr);
+    if (!isNumeric) return false;
+
+    // Case 1: We saw a loading transition ("---") and now we have a number.
+    if (hasSeenLoadingTransition) {
+        console.log(`TV Optimizer: Data recovered from loading state: "${valStr}"`);
+        return true;
+    }
+
+    // Case 2: The value is different from the stale value.
+    if (globalStaleValue && valStr !== globalStaleValue) {
+        console.log(`TV Optimizer: Data changed from stale "${globalStaleValue}" to "${valStr}"`);
+        return true;
+    }
+
+    // Case 3: Safety fallback - if it's been more than 5 seconds and we have a number
+    // but it's the same as stale, maybe the result is just the same.
+    if (currentPollCount > 10) { 
+        console.log(`TV Optimizer: Value stable at "${valStr}" for 5s. Proceeding.`);
+        return true;
+    }
+
+    return false;
+}
+
 
 async function ensureOverviewTabActive() {
     console.log("TV Optimizer: Ensuring Metrics/Overview tab is active...");
